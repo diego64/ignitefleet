@@ -4,6 +4,7 @@ import { AppProvider, UserProvider } from '@realm/react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Roboto_400Regular, Roboto_700Bold } from '@expo-google-fonts/roboto';
 import { Routes } from './src/routes';
+import { RealmProvider } from './src/libs/realm';
 
 import theme from './src/theme';
 
@@ -36,7 +37,9 @@ export default function App() {
             translucent 
           />
           <UserProvider fallback={SignIn}>
-            <Routes />
+            <RealmProvider>
+                <Routes />
+              </RealmProvider>
           </UserProvider>
         </SafeAreaProvider>
     </ThemeProvider>
