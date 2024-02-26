@@ -1,5 +1,6 @@
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { X } from 'phosphor-react-native';
 
 //RealmDB
@@ -11,6 +12,7 @@ import { BSON } from 'realm';
 import { Header } from '../../components/Header';
 import { Button } from '../../components/Button';
 import { ButtonIcon } from '../../components/ButtonIcon';
+import { getLastAsyncTimestamp } from '../../libs/asyncStorage/syncStorage';
 
 import {
   Container,
@@ -18,7 +20,8 @@ import {
   Description,
   Footer,
   Label,
-  LicensePlate
+  LicensePlate,
+  AsyncMessage
 } from './styles';
 
 type RouteParamProps = {
@@ -26,6 +29,8 @@ type RouteParamProps = {
 }
 
 export function Arrival() {
+  const [dataNotSynced, setDataNotSynced] = useState(false);
+
   const route = useRoute();
   const realm = useRealm();
   const { goBack } = useNavigation();
@@ -76,6 +81,11 @@ export function Arrival() {
     }
   }
 
+  useEffect(() => {
+    getLastAsyncTimestamp()
+      .then(lastSync => setDataNotSynced(historic!.updated_at.getTime() > lastSync));
+  },[]);
+
   return (
     <Container>
       <Header title={title} />
@@ -110,6 +120,12 @@ export function Arrival() {
             onPress={handleArrivalRegister}
           />
         </Footer>
+        }
+        {
+          dataNotSynced && 
+          <AsyncMessage>
+            Sincronização da {historic?.status === 'departure'? "partida" : "chegada"} pendente
+          </AsyncMessage>
         }
     </Container>
   );
