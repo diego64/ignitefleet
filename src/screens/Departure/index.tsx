@@ -8,10 +8,12 @@ import { useUser } from '@realm/react';
 import { useRealm } from '../../libs/realm';
 import { Historic } from '../../libs/realm/schemas/Historic';
 import { 
-  useForegroundPermissions, 
+  useForegroundPermissions,
+  requestBackgroundPermissionsAsync,
   watchPositionAsync, 
   LocationAccuracy,
-  LocationSubscription
+  LocationSubscription,
+  LocationObjectCoords
 } from 'expo-location'
 
 import { Button } from '../../components/Button';
@@ -20,6 +22,8 @@ import { LicensePlateInput } from '../../components/LicensePlateInput';
 import { TextAreaInput } from '../../components/TextAreaInput';
 import { Loading } from '../../components/Loading';
 import { LocationInfo } from '../../components/LocationInfo';
+import { Map } from '../../components/Map'
+import { startLocationTask } from '../../tasks/backgroundLocationTask';
 
 import { licensePlateValidate } from '../../utils/licensePlateValidate';
 import { getAddressLocation } from '../../utils/getAddressLocation';
@@ -34,6 +38,7 @@ export function Departure() {
   const [isRegistering, setIsResgistering] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [currentAddress, setCurrentAddress] = useState<string | null>(null)
+  const [currentCoords, setCurrentCoords] = useState<LocationObjectCoords | null>(null)
 
   const [locationForegroundPermission, requestLocationForegroundPermission] = useForegroundPermissions();
 
@@ -45,7 +50,7 @@ export function Departure() {
   const licensePlateRef = useRef<TextInput>(null);
 
   //Cadastro do veiculo
-  function handleDepartureRegister() {
+  async function handleDepartureRegister() {
     try {
       if(!licensePlateValidate(licensePlate)) {
         licensePlateRef.current?.focus();
@@ -57,7 +62,22 @@ export function Departure() {
         return Alert.alert('Finalidade', 'Por favor, informe a finalidade da utilização do veículo')
       }
 
-      setIsResgistering(false);
+      if(!currentCoords?.latitude && !currentCoords?.longitude) {
+        return Alert.alert('Localização', 'Não foi possível obter a localização atual. Tente novamente.')
+      }
+
+      setIsResgistering(true);
+
+      //Obtendo a permissão para obter a localização em background 
+      const backgroundPermissions = await requestBackgroundPermissionsAsync()
+
+      if(!backgroundPermissions.granted) {
+        setIsResgistering(false)
+        return Alert.alert('Localização', 'É necessário permitir que o App tenha acesso localização em segundo plano. Acesse as configurações do dispositivo e habilite "Permitir o tempo todo."')
+      }
+
+      //Iniciando a tarefa em segundo plano
+      await startLocationTask();
 
       realm.write(() => {
         realm.create('Historic', Historic.generate({
@@ -93,6 +113,7 @@ export function Departure() {
       accuracy: LocationAccuracy.High,
       timeInterval: 1000
     }, (location) => {
+      setCurrentCoords(location.coords)
       getAddressLocation(location.coords)
       .then(address => {
         if(address) {
@@ -133,15 +154,16 @@ export function Departure() {
 
       <KeyboardAwareScrollView extraHeight={100}>
         <ScrollView>
-          <Content>
-            {
+        { currentCoords && <Map coordinates={[currentCoords]} /> }
+            <Content>
+              {
                 currentAddress &&
-                <LocationInfo
-                  icon={CarSimple}
-                  label='Localização atual'
-                  description={currentAddress}
-                />
-              }
+                  <LocationInfo
+                    icon={CarSimple}
+                    label='Localização atual'
+                    description={currentAddress}
+                  />
+                }
             <LicensePlateInput
               ref={licensePlateRef}
               label='Placa do veículo'
