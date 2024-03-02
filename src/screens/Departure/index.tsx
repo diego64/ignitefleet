@@ -23,12 +23,13 @@ import { TextAreaInput } from '../../components/TextAreaInput';
 import { Loading } from '../../components/Loading';
 import { LocationInfo } from '../../components/LocationInfo';
 import { Map } from '../../components/Map'
-import { startLocationTask } from '../../tasks/backgroundLocationTask';
+import { openSettings } from '../../utils/openSettings';
 
+import { startLocationTask } from '../../tasks/backgroundLocationTask';
 import { licensePlateValidate } from '../../utils/licensePlateValidate';
 import { getAddressLocation } from '../../utils/getAddressLocation';
 
-import { Container, Content, Message } from './styles';
+import { Container, Content, Message, MessageContent } from './styles';
 
 //const keyboardAvoidingViewBehavior = Platform.OS === 'android' ? 'height' : 'position';
 
@@ -73,7 +74,11 @@ export function Departure() {
 
       if(!backgroundPermissions.granted) {
         setIsResgistering(false)
-        return Alert.alert('Localização', 'É necessário permitir que o App tenha acesso localização em segundo plano. Acesse as configurações do dispositivo e habilite "Permitir o tempo todo."')
+        return Alert.alert(
+          'Localização', 
+          'É necessário permitir que o App tenha acesso localização em segundo plano. Acesse as configurações do dispositivo e habilite "Permitir o tempo todo."',
+          [{ text: 'Abrir configurações', onPress: openSettings }]
+        )
       }
 
       //Iniciando a tarefa em segundo plano
@@ -84,6 +89,11 @@ export function Departure() {
           user_id: user!.id,
           license_plate: licensePlate,
           description,
+          coords:[{
+            latitude: currentCoords.latitude,
+            longitude: currentCoords.longitude,
+            timestamp: new Date().getTime()
+          }]
         }))
       });
 
@@ -135,11 +145,15 @@ export function Departure() {
     return (
       <Container>
         <Header title='Saída' />
+        <MessageContent>
           <Message>
             Você precisa permitir que o aplicativo tenha acesso a 
             localização para acessar essa funcionalidade. Por favor, acesse as
             configurações do seu dispositivo para conceder a permissão ao aplicativo.
           </Message>
+
+          <Button title='Abrir configurações' onPress={openSettings} />
+        </MessageContent>
       </Container>
     )
   }
